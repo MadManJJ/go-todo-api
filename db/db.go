@@ -15,7 +15,7 @@ import (
 	"github.com/MadManJJ/go-todo-api/models"
 )
 
-func InitDB() {
+func InitDB() *gorm.DB {
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
@@ -52,4 +52,5 @@ func InitDB() {
 
   // Migrate the schema
   db.AutoMigrate(&models.User{}, &models.Todo{})
+	return db
 }
