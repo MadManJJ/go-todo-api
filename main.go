@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 	"github.com/MadManJJ/go-todo-api/db"
 	"github.com/MadManJJ/go-todo-api/models"
 	"github.com/MadManJJ/go-todo-api/todo"
+	"github.com/golang-jwt/jwt/v4"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -21,29 +23,33 @@ func main() {
 	router := gin.Default()
 
 	// * Todo
-	router.GET("/todos", getTodosHandler)
-	router.GET("/users/:userId/todos", getTodosHandler) // * get todo by userId
-	router.GET("/todos/:id", getTodoHandler)
-	router.POST("/todos", createTodoHandler)
-	router.PUT("/todos/:id", updateTodoHandler)
-	router.DELETE("/todos/:id", deleteTodHandler)
+	protected := router.Group("/api/v1/todos")
+	protected.Use(AuthRequired())
+	protected.GET("/", getTodosHandler)
+	protected.GET("/users/:userId", getTodosHandler) // * get todo by userId
+	protected.GET("/:id", getTodoHandler)
+	protected.POST("/", createTodoHandler)
+	protected.PUT("/:id", updateTodoHandler)
+	protected.DELETE("/:id", deleteTodHandler)
 
 	// * Auth
 	router.POST("/auth/register", createUserHandler)
+	router.POST("/auth/login", loginHandler)
 
 	host := os.Getenv("HOST")
 	if host == "" {
-			host = "localhost" // default to all interfaces
+			host = "localhost"
 	}
 
 	port := os.Getenv("PORT")
 	if port == "" {
-			port = "8080" // default to 8080 if not set
+			port = "8080"
 	}
 
 	router.Run(host + ":" + port)
 }
 
+// * Todo Handler ------------------------------------------------------
 func createTodoHandler(c *gin.Context) {
 	newTodo := new(models.Todo)
 
@@ -200,6 +206,7 @@ func deleteTodHandler(c *gin.Context) {
 	})
 }
 
+// * Auth Handler ------------------------------------------------------
 func createUserHandler(c *gin.Context) {
 	newUser := new(models.User)
 
@@ -222,4 +229,85 @@ func createUserHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{
 		"message" : "success",
 	})
+}
+
+func loginHandler(c *gin.Context) {
+	var user models.User
+	if err := c.BindJSON(&user); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{
+			"message" : "failed",
+			"error" : err.Error(),
+		})
+		return
+	}
+
+	token, err := auth.LoginUser(gormdb, &user)
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{
+			"message" : "failed",
+			"error" : "Failed to login: " + err.Error(),
+		})
+		return
+	}
+
+	c.SetCookie(
+		"jwt",           // name
+		token,           // value
+		60*60*72,        // maxAge in seconds (72 hours)
+		"/",             // path
+		"",              // domain (leave empty = current)
+		false,           // secure
+		true,            // httpOnly
+	)
+
+	c.IndentedJSON(http.StatusOK, gin.H{
+		"message" : "success",
+	})
+}
+
+// * Middleware ------------------------------------------------------
+func AuthRequired() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 1. Read the cookie
+		cookie, err := c.Cookie("jwt")
+		if err != nil {
+			c.IndentedJSON(http.StatusUnauthorized, gin.H{
+				"error" : "Unauthorized",
+			})
+			c.Abort()
+			return
+		}
+
+		// 2. Parse the token
+		jwtSecretKey := os.Getenv("JWT_SECRET_KEY")
+		token, err := jwt.ParseWithClaims(cookie, jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
+			return []byte(jwtSecretKey), nil
+		})
+
+		if err != nil || !token.Valid {
+			c.IndentedJSON(http.StatusUnauthorized, gin.H{
+				"error" : "Unauthorized",
+			})
+			c.Abort()
+			return
+		}
+
+		// 3. Extract and print claims
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			c.IndentedJSON(http.StatusUnauthorized, gin.H{
+				"error" : "Unauthorized",
+			})
+			c.Abort()
+			return
+		}
+
+		fmt.Println("user_id:", claims["user_id"])
+
+		// Optionally store claims in context for access later
+		c.Set("user_id", claims["user_id"])
+
+		// 4. Continue to the next handler
+		c.Next()
+	}
 }
