@@ -20,6 +20,7 @@ func main() {
 	router := gin.Default()
 
 	router.GET("/todos", getTodosHandler)
+	router.GET("/users/:userId/todos", getTodosHandler) // * get todo by userId
 	router.GET("/todos/:id", getTodoHandler)
 	router.POST("/todos", createTodoHandler)
 	router.POST("/auth/register", createUserHandler)
@@ -62,7 +63,23 @@ func createTodoHandler(c *gin.Context) {
 }
 
 func getTodosHandler(c *gin.Context) {
-	todos := todo.GetTodos(gormdb)
+	userId := c.Param("userId") // * optional
+	var todos []models.Todo
+
+	if userId != "" {
+		userIdUint64, err := strconv.ParseUint(userId, 10, 32)
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{
+				"message": "failed",
+				"error":   "Invalid user ID",
+			})
+			return
+		}
+		todos = todo.GetTodos(gormdb, uint(userIdUint64))
+	} else {
+		todos = todo.GetTodos(gormdb)
+	}
+
 	if(len(todos) == 0){
 		c.IndentedJSON(http.StatusNotFound, gin.H{
 			"message" : "failed",
@@ -70,6 +87,7 @@ func getTodosHandler(c *gin.Context) {
 		})
 		return
 	}
+
 	c.IndentedJSON(http.StatusOK, gin.H{ 
 		"message" : "success",
 		"count" : len(todos),

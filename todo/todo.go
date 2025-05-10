@@ -17,9 +17,14 @@ func CreateTodo(db *gorm.DB, todo *models.Todo) error {
 	return nil
 }
 
-func GetTodos(db *gorm.DB) []models.Todo {
+func GetTodos(db *gorm.DB, userId ...uint) []models.Todo {
 	var todos []models.Todo
-	result := db.Find(&todos)
+	var result *gorm.DB
+	if len(userId) > 0 {
+		result = db.Where("user_id = ?", userId[0]).Find(&todos)
+	}else{
+		result = db.Find(&todos)
+	}
 
 	if result.Error != nil {
 		log.Fatalf("Error get books: %v", result.Error)
