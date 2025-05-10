@@ -19,10 +19,13 @@ func main() {
 	gormdb = db.InitDB()
 	router := gin.Default()
 
+	// * TODO
 	router.GET("/todos", getTodosHandler)
 	router.GET("/users/:userId/todos", getTodosHandler) // * get todo by userId
 	router.GET("/todos/:id", getTodoHandler)
 	router.POST("/todos", createTodoHandler)
+
+	// * Auth
 	router.POST("/auth/register", createUserHandler)
 
 	host := os.Getenv("HOST")
@@ -63,6 +66,21 @@ func createTodoHandler(c *gin.Context) {
 }
 
 func getTodosHandler(c *gin.Context) {
+	pageStr := c.DefaultQuery("page", "0")
+	limitStr := c.DefaultQuery("limit", "0")
+
+	page, err := strconv.Atoi(pageStr)
+	limit, err2 := strconv.Atoi(limitStr)
+
+	if err != nil || err2 != nil || page < 0 || limit < 0 {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{
+			"message": "failed",
+			"error":   "Invalid pagination parameters",
+		})
+		return
+	}
+	offset := (page - 1) * limit
+
 	userId := c.Param("userId") // * optional
 	var todos []models.Todo
 
@@ -75,9 +93,9 @@ func getTodosHandler(c *gin.Context) {
 			})
 			return
 		}
-		todos = todo.GetTodos(gormdb, uint(userIdUint64))
+		todos = todo.GetTodos(gormdb, limit, offset, uint(userIdUint64))
 	} else {
-		todos = todo.GetTodos(gormdb)
+		todos = todo.GetTodos(gormdb, limit, offset)
 	}
 
 	if(len(todos) == 0){
