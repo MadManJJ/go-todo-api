@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/MadManJJ/go-todo-api/auth"
 	"github.com/MadManJJ/go-todo-api/db"
@@ -18,6 +19,7 @@ func main() {
 	router := gin.Default()
 
 	router.GET("/todos", getTodosHandler)
+	router.GET("/todos/:id", getTodoHandler)
 	router.POST("/todos", createTodoHandler)
 	router.POST("/auth/register", createUserHandler)
 
@@ -61,6 +63,32 @@ func getTodosHandler(c *gin.Context) {
 		"message" : "success",
 		"count" : len(todos),
 		"data" : todos,
+	})
+}
+
+func getTodoHandler(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{
+			"message": "failed",
+			"error":   "Invalid todo ID: " + err.Error(),
+		})
+		return
+	}
+
+	todo, err := todo.GetTodo(gormdb, uint(id))
+	if err != nil {
+		c.IndentedJSON(http.StatusNotFound, gin.H{
+			"message" : "failed",
+			"error": "No todos found: " + err.Error(),
+		})
+		return
+	}
+	
+	c.IndentedJSON(http.StatusOK, gin.H{ 
+		"message" : "success",
+		"data" : todo,
 	})
 }
 

@@ -27,3 +27,13 @@ func GetTodos(db *gorm.DB) []models.Todo {
 
 	return todos
 }
+
+func GetTodo(db *gorm.DB, id uint) (*models.Todo, error) {
+	var todo models.Todo
+	result := db.First(&todo, id)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &todo, nil
+}
