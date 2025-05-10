@@ -9,6 +9,7 @@ import (
 	"github.com/MadManJJ/go-todo-api/db"
 	"github.com/MadManJJ/go-todo-api/models"
 	"github.com/MadManJJ/go-todo-api/todo"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -19,11 +20,12 @@ func main() {
 	gormdb = db.InitDB()
 	router := gin.Default()
 
-	// * TODO
+	// * Todo
 	router.GET("/todos", getTodosHandler)
 	router.GET("/users/:userId/todos", getTodosHandler) // * get todo by userId
 	router.GET("/todos/:id", getTodoHandler)
 	router.POST("/todos", createTodoHandler)
+	router.PUT("/todos/:id", updateTodoHandler)
 
 	// * Auth
 	router.POST("/auth/register", createUserHandler)
@@ -136,6 +138,42 @@ func getTodoHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{ 
 		"message" : "success",
 		"data" : todo,
+	})
+}
+
+func updateTodoHandler(c * gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{
+			"message": "failed",
+			"error":   "Invalid ID",
+		})
+		return
+	}
+
+	updatedTodo := new(models.Todo)
+
+	if err := c.BindJSON(&updatedTodo); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{
+			"message" : "failed",
+			"error": "Invalid JSON payload: " + err.Error(),
+		})
+		return
+	}
+
+	updatedTodo.ID = uint(id)
+
+	if updatedTodo, err = todo.UpdateTodo(gormdb, updatedTodo); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{
+			"message" : "failed",
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, gin.H{
+		"message" : "success",
+		"data" : updatedTodo,
 	})
 }
 
