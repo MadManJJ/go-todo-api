@@ -26,6 +26,7 @@ func main() {
 	router.GET("/todos/:id", getTodoHandler)
 	router.POST("/todos", createTodoHandler)
 	router.PUT("/todos/:id", updateTodoHandler)
+	router.DELETE("/todos/:id", deleteTodHandler)
 
 	// * Auth
 	router.POST("/auth/register", createUserHandler)
@@ -141,7 +142,7 @@ func getTodoHandler(c *gin.Context) {
 	})
 }
 
-func updateTodoHandler(c * gin.Context) {
+func updateTodoHandler(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{
@@ -174,6 +175,28 @@ func updateTodoHandler(c * gin.Context) {
 	c.IndentedJSON(http.StatusOK, gin.H{
 		"message" : "success",
 		"data" : updatedTodo,
+	})
+}
+
+func deleteTodHandler(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{
+			"message" : "failed",
+			"error" : "Invalid ID",
+		})
+		return
+	}
+
+	if err = todo.DeleteTodo(gormdb, uint(id)); err != nil {
+		c.IndentedJSON(http.StatusNotFound, gin.H{
+			"message" : "failed",
+			"error" : err.Error(),
+		})
+		return
+	}
+	c.IndentedJSON(http.StatusOK, gin.H{
+		"message" : "success",
 	})
 }
 
