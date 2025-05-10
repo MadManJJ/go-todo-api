@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/MadManJJ/go-todo-api/auth"
@@ -23,7 +24,17 @@ func main() {
 	router.POST("/todos", createTodoHandler)
 	router.POST("/auth/register", createUserHandler)
 
-	router.Run("localhost:8080")
+	host := os.Getenv("HOST")
+	if host == "" {
+			host = "localhost" // default to all interfaces
+	}
+
+	port := os.Getenv("PORT")
+	if port == "" {
+			port = "8080" // default to 8080 if not set
+	}
+
+	router.Run(host + ":" + port)
 }
 
 func createTodoHandler(c *gin.Context) {
