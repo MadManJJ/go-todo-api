@@ -31,7 +31,7 @@ func InitDB() *gorm.DB {
     "password=%s dbname=%s sslmode=disable",
     host, port, user, password, dbname)
 
-		  // New logger for detailed SQL logging
+	// * New logger for detailed SQL logging
   newLogger := logger.New(
     log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
     logger.Config{
@@ -50,7 +50,7 @@ func InitDB() *gorm.DB {
   }
 	fmt.Println(db)
 
-  // Migrate the schema
+  // * Migrate the schema
   db.AutoMigrate(&models.User{}, &models.Todo{})
 	return db
 }
