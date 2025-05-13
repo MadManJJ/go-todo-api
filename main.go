@@ -137,7 +137,7 @@ func getTodoHandler(c *gin.Context) {
 	if err != nil {
 		c.IndentedJSON(http.StatusNotFound, gin.H{
 			"message" : "failed",
-			"error": "No todos found: " + err.Error(),
+			"error": "No todo with ID of " + strconv.Itoa(id) + ": " + err.Error(),
 		})
 		return
 	}
