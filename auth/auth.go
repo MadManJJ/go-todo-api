@@ -28,11 +28,11 @@ func CreateUser(db *gorm.DB, user *models.User) error {
 	return nil
 }
 
-func LoginUser(db *gorm.DB, user *models.User) (string,error) {
+func LoginUser(db *gorm.DB, user *models.User) (string, error) {
 	var selectedUser models.User
 	result := db.Where("email = ?", user.Email).First(&selectedUser)
 	if result.Error != nil {
-		return "", result.Error
+		return "", result.Error // * Return error if no user with the provided email is found
 	}
 
 	err := bcrypt.CompareHashAndPassword([]byte(selectedUser.Password), []byte(user.Password))
